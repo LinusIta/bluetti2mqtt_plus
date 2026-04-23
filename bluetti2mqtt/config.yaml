@@ -1,6 +1,6 @@
 ---
 name: Bluetti2MQTT Plus
-version: 3.0.1
+version: 3.0.2
 slug: bluetti2mqtt_plus
 description: MQTT bridge between Bluetti and Home Assistant with grid_charge_amps e dc input 2
 url: https://github.com/LinusIta/bluetti2mqtt_plus

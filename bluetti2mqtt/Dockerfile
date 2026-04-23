@@ -23,130 +23,153 @@ RUN sed -i "s|self.struct.add_decimal_field('internal_dc_input_current', 88, 1)|
 RUN sed -i "s|ReadHoldingRegisters(70, 21),|ReadHoldingRegisters(70, 21),\n            ReadHoldingRegisters(170, 3),|" \
     /usr/local/lib/python3.14/site-packages/bluetti_mqtt/core/devices/ac500.py
 
-# Create Python script to add grid_charge_amps and dc_input to MQTT config
-RUN cat > /add_mqtt_fields.py << 'PYSCRIPT'
+# Create Python script to add MQTT config and publish
+RUN cat > /patch_mqtt.py << 'PYSCRIPT'
 import sys
 filepath = '/usr/local/lib/python3.14/site-packages/bluetti_mqtt/mqtt_client.py'
 with open(filepath, 'r') as f:
-    lines = f.readlines()
+    content = f.read()
 
-new_lines = []
-i = 0
-while i < len(lines):
-    new_lines.append(lines[i])
-    
-    # Add grid_charge_amps after battery_range_end
-    if "'battery_range_end': MqttFieldConfig(" in lines[i]:
-        j = i + 1
-        while j < len(lines) and ")," not in lines[j]:
-            new_lines.append(lines[j])
-            j += 1
-        new_lines.append(lines[j])
-        new_lines.append("    'grid_charge_amps': MqttFieldConfig(\n")
-        new_lines.append("        type=MqttFieldType.NUMERIC,\n")
-        new_lines.append("        setter=True,\n")
-        new_lines.append("        advanced=False,\n")
-        new_lines.append("        home_assistant_extra={\n")
-        new_lines.append("            'name': 'Grid Charge Amps',\n")
-        new_lines.append("            'step': 1,\n")
-        new_lines.append("            'min': 0,\n")
-        new_lines.append("            'max': 10,\n")
-        new_lines.append("            'unit_of_measurement': 'A',\n")
-        new_lines.append("        }\n")
-        new_lines.append("    ),\n")
-        i = j + 1
-    
-    # Add dc_input_power2 and dc_input_voltage2 after dc_input_current1
-    elif "'dc_input_current1': MqttFieldConfig(" in lines[i]:
-        j = i + 1
-        while j < len(lines) and ")," not in lines[j]:
-            new_lines.append(lines[j])
-            j += 1
-        new_lines.append(lines[j])
-        new_lines.append("    'dc_input_voltage2': MqttFieldConfig(\n")
-        new_lines.append("        type=MqttFieldType.NUMERIC,\n")
-        new_lines.append("        setter=False,\n")
-        new_lines.append("        advanced=False,\n")
-        new_lines.append("        home_assistant_extra={\n")
-        new_lines.append("            'name': 'DC Input Voltage 2',\n")
-        new_lines.append("            'unit_of_measurement': 'V',\n")
-        new_lines.append("            'device_class': 'voltage',\n")
-        new_lines.append("            'state_class': 'measurement',\n")
-        new_lines.append("            'force_update': True,\n")
-        new_lines.append("        }\n")
-        new_lines.append("    ),\n")
-        new_lines.append("    'dc_input_power2': MqttFieldConfig(\n")
-        new_lines.append("        type=MqttFieldType.NUMERIC,\n")
-        new_lines.append("        setter=False,\n")
-        new_lines.append("        advanced=False,\n")
-        new_lines.append("        home_assistant_extra={\n")
-        new_lines.append("            'name': 'DC Input Power 2',\n")
-        new_lines.append("            'unit_of_measurement': 'W',\n")
-        new_lines.append("            'device_class': 'power',\n")
-        new_lines.append("            'state_class': 'measurement',\n")
-        new_lines.append("            'force_update': True,\n")
-        new_lines.append("        }\n")
-        new_lines.append("    ),\n")
-        i = j + 1
-    else:
-        i += 1
+# 1. Add grid_charge_amps config
+grid_charge_config = """    'grid_charge_amps': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=True,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'Grid Charge Amps',
+            'step': 1,
+            'min': 0,
+            'max': 10,
+            'unit_of_measurement': 'A',
+        }
+    ),"""
+
+content = content.replace(
+    """    'battery_range_end': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=True,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'Battery Range End',
+            'step': 1,
+            'min': 0,
+            'max': 100,
+            'unit_of_measurement': '%',
+        }
+    ),""",
+    """    'battery_range_end': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=True,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'Battery Range End',
+            'step': 1,
+            'min': 0,
+            'max': 100,
+            'unit_of_measurement': '%',
+        }
+    ),
+""" + grid_charge_config
+)
+
+# 2. Add dc_input configs
+dc_input_config = """    'dc_input_voltage2': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=False,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'DC Input Voltage 2',
+            'unit_of_measurement': 'V',
+            'device_class': 'voltage',
+            'state_class': 'measurement',
+            'force_update': True,
+        }
+    ),
+    'dc_input_power2': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=False,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'DC Input Power 2',
+            'unit_of_measurement': 'W',
+            'device_class': 'power',
+            'state_class': 'measurement',
+            'force_update': True,
+        }
+    ),"""
+
+content = content.replace(
+    """    'dc_input_current1': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=False,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'DC Input Current 1',
+            'unit_of_measurement': 'A',
+            'device_class': 'current',
+            'state_class': 'measurement',
+            'force_update': True,
+        }
+    ),""",
+    """    'dc_input_current1': MqttFieldConfig(
+        type=MqttFieldType.NUMERIC,
+        setter=False,
+        advanced=False,
+        home_assistant_extra={
+            'name': 'DC Input Current 1',
+            'unit_of_measurement': 'A',
+            'device_class': 'current',
+            'state_class': 'measurement',
+            'force_update': True,
+        }
+    ),
+""" + dc_input_config
+)
+
+# 3. Add publish for dc_input_voltage2
+content = content.replace(
+    """        if 'internal_dc_input_voltage' in msg.parsed:
+            await client.publish(
+                topic_prefix + 'dc_input_voltage1',
+                payload=str(msg.parsed['internal_dc_input_voltage']).encode()
+            )""",
+    """        if 'internal_dc_input_voltage' in msg.parsed:
+            await client.publish(
+                topic_prefix + 'dc_input_voltage1',
+                payload=str(msg.parsed['internal_dc_input_voltage']).encode()
+            )
+        if 'dc_input_voltage2' in msg.parsed:
+            await client.publish(
+                topic_prefix + 'dc_input_voltage2',
+                payload=str(msg.parsed['dc_input_voltage2']).encode()
+            )"""
+)
+
+# 4. Add publish for dc_input_power2
+content = content.replace(
+    """        if 'internal_dc_input_power' in msg.parsed:
+            await client.publish(
+                topic_prefix + 'dc_input_power1',
+                payload=str(msg.parsed['internal_dc_input_power']).encode()
+            )""",
+    """        if 'internal_dc_input_power' in msg.parsed:
+            await client.publish(
+                topic_prefix + 'dc_input_power1',
+                payload=str(msg.parsed['internal_dc_input_power']).encode()
+            )
+        if 'dc_input_power2' in msg.parsed:
+            await client.publish(
+                topic_prefix + 'dc_input_power2',
+                payload=str(msg.parsed['dc_input_power2']).encode()
+            )"""
+)
 
 with open(filepath, 'w') as f:
-    f.writelines(new_lines)
+    f.write(content)
+    
+print("✓ MQTT patches applied successfully")
 PYSCRIPT
 
-RUN python3 /add_mqtt_fields.py
-
-# Create Python script to publish dc_input_power2 and dc_input_voltage2
-RUN cat > /add_mqtt_publish.py << 'PYSCRIPT'
-import sys
-filepath = '/usr/local/lib/python3.14/site-packages/bluetti_mqtt/mqtt_client.py'
-with open(filepath, 'r') as f:
-    lines = f.readlines()
-
-new_lines = []
-i = 0
-while i < len(lines):
-    new_lines.append(lines[i])
-    
-    # Add dc_input_voltage2 publish after dc_input_voltage1
-    if "topic_prefix + 'dc_input_voltage1'" in lines[i] and "await client.publish" in lines[i-1]:
-        # Find the closing ) of this publish block
-        j = i + 1
-        while j < len(lines) and ")" not in lines[j]:
-            new_lines.append(lines[j])
-            j += 1
-        new_lines.append(lines[j])  # Add the closing )
-        # Add dc_input_voltage2 publish
-        new_lines.append("        if 'dc_input_voltage2' in msg.parsed:\n")
-        new_lines.append("            await client.publish(\n")
-        new_lines.append("                topic_prefix + 'dc_input_voltage2',\n")
-        new_lines.append("                payload=str(msg.parsed['dc_input_voltage2']).encode()\n")
-        new_lines.append("            )\n")
-        i = j + 1
-    
-    # Add dc_input_power2 publish after dc_input_power1
-    elif "topic_prefix + 'dc_input_power1'" in lines[i] and "await client.publish" in lines[i-1]:
-        # Find the closing ) of this publish block
-        j = i + 1
-        while j < len(lines) and ")" not in lines[j]:
-            new_lines.append(lines[j])
-            j += 1
-        new_lines.append(lines[j])  # Add the closing )
-        # Add dc_input_power2 publish
-        new_lines.append("        if 'dc_input_power2' in msg.parsed:\n")
-        new_lines.append("            await client.publish(\n")
-        new_lines.append("                topic_prefix + 'dc_input_power2',\n")
-        new_lines.append("                payload=str(msg.parsed['dc_input_power2']).encode()\n")
-        new_lines.append("            )\n")
-        i = j + 1
-    else:
-        i += 1
-
-with open(filepath, 'w') as f:
-    f.writelines(new_lines)
-PYSCRIPT
-
-RUN python3 /add_mqtt_publish.py
+RUN python3 /patch_mqtt.py
 
 CMD [ "/run.sh" ]
