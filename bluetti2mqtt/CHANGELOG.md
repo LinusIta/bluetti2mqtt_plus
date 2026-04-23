@@ -24,5 +24,5 @@
 
 ## \[1.0.0] - 2026-03-16
 
-* Use bluetti\_mqtt from https://github.com/semitop7/bluetti\_mqtt based on version 0.16.1
+* Use bluetti\_mqtt from [semitop7/bluetti_mqtt](https://github.com/semitop7/bluetti_mqtt) based on version 0.16.1
 
