@@ -1,6 +1,6 @@
 # Bluetti2MQTT_Plus
 
-Fork di [semitop7/bluetti2mqtt](https://github.com/semitop7/bluetti2mqtt) con aggiunta del supporto per `grid_charge_amps e DC Input 2`.
+Fork di [semitop7/bluetti2mqtt](https://github.com/semitop7/bluetti2mqtt) con aggiunta del supporto per `grid_charge_amps`, `DC Input Power 2` e `DC Input Voltage 2`.
 
 ## Cosa fa
 
@@ -8,7 +8,7 @@ Questo addon espone i dati della Bluetti tramite MQTT e Home Assistant, e aggiun
 
 Supporto ac500 ac300 ac200L ep500 ep500p ep600 (testato su ac500)
 
-Su AC500 implementati i campi **DC Input Power 2 e DC Input Voltage 2**
+Su **AC500** implementati i campi **DC Input Power 2 e DC Input Voltage 2**
 
 ## Novità rispetto a semitop7
 
@@ -81,7 +81,7 @@ Vedi la configurazione nell'addon per maggiori dettagli.
 
 - [semitop7](https://github.com/semitop7) per il lavoro originale su bluetti2mqtt
 - [warhammerkid](https://github.com/warhammerkid) per il supporto Bluetooth
-- Questa fork aggiunge il supporto per `grid_charge_amps`
+- Questa fork aggiunge il supporto per `grid_charge_amps`, `DC Input Power 2` e `DC Input Voltage 2`
 
 ## License
 
