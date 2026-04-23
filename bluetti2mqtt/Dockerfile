@@ -102,54 +102,49 @@ RUN cat > /add_mqtt_publish.py << 'PYSCRIPT'
 import sys
 filepath = '/usr/local/lib/python3.14/site-packages/bluetti_mqtt/mqtt_client.py'
 with open(filepath, 'r') as f:
-    content = f.read()
+    lines = f.readlines()
 
-# Cerca la sezione dove pubblica dc_input_power1
-search_str = """        if 'internal_dc_input_power' in msg.parsed:
-            await client.publish(
-                topic_prefix + 'dc_input_power1',
-                payload=str(msg.parsed['internal_dc_input_power']).encode()
-            )"""
-
-replace_str = """        if 'internal_dc_input_power' in msg.parsed:
-            await client.publish(
-                topic_prefix + 'dc_input_power1',
-                payload=str(msg.parsed['internal_dc_input_power']).encode()
-            )
-        if 'dc_input_power2' in msg.parsed:
-            await client.publish(
-                topic_prefix + 'dc_input_power2',
-                payload=str(msg.parsed['dc_input_power2']).encode()
-            )"""
-
-if search_str in content:
-    content = content.replace(search_str, replace_str)
-    print("✓ Aggiunto publish dc_input_power2")
-
-# Cerca la sezione dove pubblica dc_input_voltage1
-search_str2 = """        if 'internal_dc_input_voltage' in msg.parsed:
-            await client.publish(
-                topic_prefix + 'dc_input_voltage1',
-                payload=str(msg.parsed['internal_dc_input_voltage']).encode()
-            )"""
-
-replace_str2 = """        if 'internal_dc_input_voltage' in msg.parsed:
-            await client.publish(
-                topic_prefix + 'dc_input_voltage1',
-                payload=str(msg.parsed['internal_dc_input_voltage']).encode()
-            )
-        if 'dc_input_voltage2' in msg.parsed:
-            await client.publish(
-                topic_prefix + 'dc_input_voltage2',
-                payload=str(msg.parsed['dc_input_voltage2']).encode()
-            )"""
-
-if search_str2 in content:
-    content = content.replace(search_str2, replace_str2)
-    print("✓ Aggiunto publish dc_input_voltage2")
+new_lines = []
+i = 0
+while i < len(lines):
+    new_lines.append(lines[i])
+    
+    # Add dc_input_voltage2 publish after dc_input_voltage1
+    if "topic_prefix + 'dc_input_voltage1'" in lines[i] and "await client.publish" in lines[i-1]:
+        # Find the closing ) of this publish block
+        j = i + 1
+        while j < len(lines) and ")" not in lines[j]:
+            new_lines.append(lines[j])
+            j += 1
+        new_lines.append(lines[j])  # Add the closing )
+        # Add dc_input_voltage2 publish
+        new_lines.append("        if 'dc_input_voltage2' in msg.parsed:\n")
+        new_lines.append("            await client.publish(\n")
+        new_lines.append("                topic_prefix + 'dc_input_voltage2',\n")
+        new_lines.append("                payload=str(msg.parsed['dc_input_voltage2']).encode()\n")
+        new_lines.append("            )\n")
+        i = j + 1
+    
+    # Add dc_input_power2 publish after dc_input_power1
+    elif "topic_prefix + 'dc_input_power1'" in lines[i] and "await client.publish" in lines[i-1]:
+        # Find the closing ) of this publish block
+        j = i + 1
+        while j < len(lines) and ")" not in lines[j]:
+            new_lines.append(lines[j])
+            j += 1
+        new_lines.append(lines[j])  # Add the closing )
+        # Add dc_input_power2 publish
+        new_lines.append("        if 'dc_input_power2' in msg.parsed:\n")
+        new_lines.append("            await client.publish(\n")
+        new_lines.append("                topic_prefix + 'dc_input_power2',\n")
+        new_lines.append("                payload=str(msg.parsed['dc_input_power2']).encode()\n")
+        new_lines.append("            )\n")
+        i = j + 1
+    else:
+        i += 1
 
 with open(filepath, 'w') as f:
-    f.write(content)
+    f.writelines(new_lines)
 PYSCRIPT
 
 RUN python3 /add_mqtt_publish.py
