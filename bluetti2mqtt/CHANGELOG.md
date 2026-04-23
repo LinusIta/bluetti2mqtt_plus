@@ -1,3 +1,7 @@
+## \[3.0.1] - 2026-04-17
+
+* Fix MQTT publish indentation for dc\_input\_power2 and dc\_input\_voltage2
+
 ## \[3.0.0] - 2026-04-17
 
 * Add DC Input String 2 support
