@@ -1,3 +1,7 @@
+## \[3.0.3] - 2026-05-14
+
+* grid\_charge\_amps limited to 25A
+
 ## \[3.0.2] - 2026-04-23
 
 * Fix MQTT - use simple string replacement

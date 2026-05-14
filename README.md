@@ -4,7 +4,7 @@ Fork di [semitop7/bluetti2mqtt](https://github.com/semitop7/bluetti2mqtt) con ag
 
 ## Cosa fa
 
-Questo addon espone i dati della Bluetti tramite MQTT e Home Assistant, e aggiunge il controllo degli ampere di carica da rete (`grid_charge_amps`) limitato volutamente a max 10A 
+Questo addon espone i dati della Bluetti tramite MQTT e Home Assistant, e aggiunge il controllo degli ampere di carica da rete (`grid_charge_amps`)  
 
 Supporto ac500 ac300 ac200L ep500 ep500p ep600 (testato su ac500)
 

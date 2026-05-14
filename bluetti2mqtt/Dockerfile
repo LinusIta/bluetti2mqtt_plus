@@ -39,7 +39,7 @@ grid_charge_config = """    'grid_charge_amps': MqttFieldConfig(
             'name': 'Grid Charge Amps',
             'step': 1,
             'min': 0,
-            'max': 10,
+            'max': 25,
             'unit_of_measurement': 'A',
         }
     ),"""
