@@ -28,3 +28,8 @@ The v4 add-on retains the tested `bluetti2mqtt_plus_v4_preview` internal slug fo
 - Focused on AC500; other Bluetti models are not claimed supported by this implementation.
 - Bluetooth is best effort, may experience intermittent transport timeouts and reconnects.
 - Modbus TCP is not included in v4.0.0; hybrid transport is a separate future development.
+
+## v4.0.1 maintenance
+- Suppress obsolete preview/dev7 MQTT Discovery cleanup notices from normal INFO logs (cleanup remains active; entries appear only with debug enabled).
+- Silence Bleak's harmless `bluetoothctl not available` BlueZ-version probe warning in the add-on environment. Other BLE connection and polling warnings remain visible.
+- No changes to MQTT topics, BLE polling, device commands, or Home Assistant entities.

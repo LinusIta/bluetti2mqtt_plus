@@ -425,7 +425,7 @@ class Bridge:
         for alias, domain in PREVIEW_CONTROL_ALIASES.items():
             topic = f"homeassistant/{domain}/{self.opts.serial}_{alias}/config"
             self.mqtt.publish(topic, payload=b"", qos=1, retain=True)
-            LOG.info("Removed preview alias Discovery: %s", topic)
+            LOG.debug("Cleared obsolete preview alias Discovery: %s", topic)
         # Dev7 accidentally introduced fresh pack unique IDs alongside the
         # original semitop-era pack_percentN/pack_voltageN entities. Delete ONLY
         # those dev7-only retained configs; preserve the legacy Discovery.
@@ -434,7 +434,7 @@ class Bridge:
                 field = f"battery_pack_{slot}_{suffix}"
                 topic = f"homeassistant/sensor/{self.opts.serial}_{field}/config"
                 self.mqtt.publish(topic, payload=b"", qos=1, retain=True)
-                LOG.info("Removed dev7-only B300 Discovery: %s", topic)
+                LOG.debug("Cleared obsolete dev7-only B300 Discovery: %s", topic)
         fields = ["total_battery_percent", "dc_input_power", "ac_input_power",
                   "ac_output_power", "dc_output_power", "dc_input_voltage2", "dc_input_power2",
                   "grid_charge_amps",
@@ -817,6 +817,9 @@ async def main():
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     # Library currently logs BLE session keys at INFO: suppress sensitive material.
     logging.getLogger("bluetti_bt_lib.bluetooth.encryption").setLevel(logging.ERROR)
+    # Home Assistant add-on image intentionally has no bluetoothctl; Bleak defaults to BlueZ 5.55+.
+    # Only silence this known capability probe warning, preserving other BLE warnings.
+    logging.getLogger("bleak.backends.bluezdbus.version").setLevel(logging.ERROR)
     opts = Settings.load()
     bridge = Bridge(opts)
     loop = asyncio.get_running_loop()
