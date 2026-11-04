@@ -5,7 +5,7 @@ This repository contains **two separately installable add-ons**:
 | Add-on | Version | Supported use case |
 |---|---|---|
 | **Bluetti2MQTT Plus** | **3.0.3 (legacy)** | Existing unencrypted Bluetooth devices and the previously supported Bluetti model range. Unchanged. |
-| **Bluetti2MQTT Plus - AC500 Secure BLE** | **4.0.0** | Standalone bridge for **Bluetti AC500 with encrypted BLE** after firmware updates. |
+| **Bluetti2MQTT Plus - AC500 Secure BLE** | **4.0.1** | Standalone bridge for **Bluetti AC500 with encrypted BLE** after firmware updates. |
 
 The new secure BLE add-on lives under [`bluetti2mqtt_ac500_ble/`](bluetti2mqtt_ac500_ble/README.md); legacy remains under [`bluetti2mqtt/`](bluetti2mqtt/).
 
