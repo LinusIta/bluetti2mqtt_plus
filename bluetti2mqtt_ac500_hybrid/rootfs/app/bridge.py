@@ -366,7 +366,9 @@ class Bridge:
         self.last_full_pack_scan = 0.0
         self.modbus_last_ok = 0.0
         self.modbus_publishing = False
+        self.modbus_recent_fields = set()
         self.modbus_failure_logged = False
+        self.refresh_requested = asyncio.Event()
         self.prefix = f"bluetti/state/AC500-{opts.serial}/"
         self.command_prefix = f"bluetti/command/AC500-{opts.serial}/"
         self.mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"bluetti-plus-{opts.serial}")
@@ -419,7 +421,7 @@ class Bridge:
 
     def publish(self, name, value, retain=True):
         # Modbus is authoritative only while healthy; BLE remains fallback.
-        if (not self.modbus_publishing and name in MODBUS_FIELDS
+        if (not self.modbus_publishing and name in self.modbus_recent_fields
                 and self.modbus_last_ok
                 and time.monotonic() - self.modbus_last_ok < max(15, self.opts.modbus_poll_sec * 3)):
             return
@@ -761,8 +763,9 @@ class Bridge:
         if result is None or not reader.response_ok:
             LOG.error("Write unconfirmed: %s=%s", field, payload)
             return
-        LOG.info("FC06 accepted: %s=%s; later poll verifies applied setting", field, payload)
-        # Do not optimistically publish payload: the actual register update can be delayed.
+        LOG.info("FC06 accepted: %s=%s; requesting immediate BLE read-back", field, payload)
+        self.refresh_requested.set()
+        # Do not optimistically publish payload: actual hardware state is read back over BLE.
 
     async def worker(self):
         while not self.stop_event.is_set():
@@ -793,6 +796,7 @@ class Bridge:
                         raise RuntimeError("Modbus returned implausible battery SOC")
                     recovered = self.modbus_failure_logged or not self.modbus_last_ok
                     self.modbus_last_ok = time.monotonic()
+                    self.modbus_recent_fields = set(data)
                     self.modbus_failure_logged = False
                     self.modbus_publishing = True
                     try:
@@ -827,6 +831,7 @@ class Bridge:
                 await self.wait_for_pending_writes()
                 if self.stop_event.is_set():
                     break
+                self.refresh_requested.clear()
                 await self.poll_once()
             except Exception:
                 failed = True
@@ -838,10 +843,17 @@ class Bridge:
             modbus_ok = bool(self.modbus_last_ok and time.monotonic() - self.modbus_last_ok < max(15, self.opts.modbus_poll_sec * 3))
             interval = self.opts.poll_sec if modbus_ok else 15
             delay = max(2.0 if failed else 0.0, interval - elapsed)
-            try:
-                await asyncio.wait_for(self.stop_event.wait(), timeout=delay)
-            except asyncio.TimeoutError:
-                pass
+            # Wake a periodic BLE reader promptly for command read-back;
+            # keep commands prioritised by the existing pending_write gate.
+            end = time.monotonic() + delay
+            while not self.stop_event.is_set() and not self.refresh_requested.is_set():
+                remaining = end - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    await asyncio.wait_for(self.stop_event.wait(), timeout=min(2.0, remaining))
+                except asyncio.TimeoutError:
+                    pass
 
     def handle_asyncio_exception(self, loop, context):
         # bluetti-bt-lib launches BLE notification callbacks as independent
