@@ -68,9 +68,9 @@ class AC500ModbusReader:
         pv1, pv1_voltage = await self.holding(50269, 2)
         pv2 = (await self.holding(50273, 1))[0]
         bat_voltage, bat_current, soc = await self.holding(51002, 3)
-        if not (0 <= soc <= 100 and 250 <= bat_voltage <= 700 and 4000 <= freq <= 7000):
+        if not (0 <= soc <= 100 and 250 <= bat_voltage <= 700 and (freq == 0 or 4000 <= freq <= 7000)):
             raise ValueError("Implausible AC500 Modbus voltage/SOC/frequency")
-        return {
+        values = {
             "ac_output_power": ac_local,
             "ac_input_power": grid_local,
             "dc_input_power": pv_total,
@@ -78,8 +78,11 @@ class AC500ModbusReader:
             "battery_soc": soc,
             "total_battery_voltage": round(bat_voltage * 0.1, 1),
             "total_battery_current": round(bat_current * 0.1, 1),
-            "ac_input_frequency": round(freq * 0.01, 2),
             "dc_input_power1": pv1,
             "dc_input_voltage1": round(pv1_voltage * 0.1, 1),
             "dc_input_power2": pv2,
         }
+        # Off-grid devices may report no mains frequency; leave BLE authoritative.
+        if freq:
+            values["ac_input_frequency"] = round(freq * 0.01, 2)
+        return values
