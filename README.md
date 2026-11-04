@@ -1,19 +1,20 @@
 # Bluetti2MQTT Plus — Home Assistant Add-ons
 
-This repository contains **two separately installable add-ons**:
+This repository contains **three separately installable add-ons**:
 
 | Add-on | Version | Supported use case |
 |---|---|---|
 | **Bluetti2MQTT Plus** | **3.0.3 (legacy)** | Existing unencrypted Bluetooth devices and the previously supported Bluetti model range. Unchanged. |
-| **Bluetti2MQTT Plus - AC500 Secure BLE** | **4.0.0** | Standalone bridge for **Bluetti AC500 with encrypted BLE** after firmware updates. |
+| **Bluetti2MQTT Plus - AC500 Secure BLE** | **4.0.1** | Stable standalone bridge for **Bluetti AC500 with encrypted BLE**. |
+| **Bluetti2MQTT Plus - AC500 Hybrid** | **1.0.0-beta1 (experimental)** | Read-only Modbus TCP telemetry + Secure BLE pack details and all BLE device commands. |
 
-The new secure BLE add-on lives under [`bluetti2mqtt_ac500_ble/`](bluetti2mqtt_ac500_ble/README.md); legacy remains under [`bluetti2mqtt/`](bluetti2mqtt/).
+Legacy remains under [`bluetti2mqtt/`](bluetti2mqtt/); Secure BLE lives under [`bluetti2mqtt_ac500_ble/`](bluetti2mqtt_ac500_ble/README.md), and the experimental Hybrid is in [`bluetti2mqtt_ac500_hybrid/`](bluetti2mqtt_ac500_hybrid/README.md).
 
 **Important:** AC500 Secure BLE 4.0.0 is **not** a drop-in replacement for every model supported by the legacy add-on. Do **not** install both add-ons for the same AC500 MQTT device identity. Backup your current add-on configuration before switching.
 
-The v4 runtime does not depend on semitop7: it uses `bluetti-bt-lib==0.1.8` and the standalone MQTT bridge. Modbus hybrid support is planned separately and is **not included** in v4.0.0.
+The Secure BLE v4 runtime does not depend on semitop7: it uses `bluetti-bt-lib==0.1.8` and the standalone MQTT bridge. Modbus hybrid support is available in the **separate experimental Hybrid add-on**; it is **not included** in Secure BLE v4.
 
-See [v4.0.0 release notes](RELEASE_NOTES_v4.0.0.md).
+See [v4.0.0 release notes](RELEASE_NOTES_v4.0.0.md). For Hybrid beta setup and limitations, see [Hybrid README](bluetti2mqtt_ac500_hybrid/README.md).
 
 ---
 
