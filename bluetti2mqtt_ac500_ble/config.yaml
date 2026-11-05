@@ -1,5 +1,5 @@
 name: "Bluetti2MQTT Plus - AC500 Secure BLE"
-version: "4.0.1"
+version: "4.0.2"
 slug: bluetti2mqtt_plus_v4_preview
 description: "Standalone MQTT bridge for Bluetti AC500 with encrypted Bluetooth support"
 url: https://github.com/LinusIta/bluetti2mqtt_plus
