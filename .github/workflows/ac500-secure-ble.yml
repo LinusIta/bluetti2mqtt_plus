@@ -24,4 +24,6 @@ jobs:
       - name: Test command mailbox
         run: python -m unittest discover -s bluetti2mqtt_ac500_ble/tests -p 'test_*.py' -v
       - name: Verify add-on release version
-        run: grep -q '^version: "4.0.2"$' bluetti2mqtt_ac500_ble/config.yaml
+        run: |
+          grep -q '^version: "4.0.2"
+ bluetti2mqtt_ac500_ble/config.yaml
