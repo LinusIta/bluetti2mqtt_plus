@@ -33,3 +33,22 @@ The v4 add-on retains the tested `bluetti2mqtt_plus_v4_preview` internal slug fo
 - Suppress obsolete preview/dev7 MQTT Discovery cleanup notices from normal INFO logs (cleanup remains active; entries appear only with debug enabled).
 - Silence Bleak's harmless `bluetoothctl not available` BlueZ-version probe warning in the add-on environment. Other BLE connection and polling warnings remain visible.
 - No changes to MQTT topics, BLE polling, device commands, or Home Assistant entities.
+
+## v4.0.2 — MQTT setpoint protection
+
+Surplus-following Home Assistant automations may update charge current every 15 seconds. **Do not throttle these automations**. This release protects the BLE bridge instead:
+
+- A bounded **latest-value-wins** MQTT mailbox stores at most one pending command
+  per physical hardware register; aliases share the same register slot.
+- Incoming changes replace older queued values for that register, retaining the
+  latest control intent while BLE is busy with an encrypted handshake or timeout.
+- Different registers retain separate pending commands and their update order.
+- Duplicate requests already being executed are not redundantly queued.
+- After actual hardware polling, values recently verified from the AC500 may be
+  deduplicated for 30 seconds; FC06 acknowledgement alone is **not** verification.
+- Pending requests older than 45 seconds are discarded, never written minutes
+  later after a BLE timeout. Fresh repeated MQTT updates refresh freshness.
+- An active BLE operation is never cancelled mid-command. MQTT, BLE polling,
+  B300 scanning, register mapping, entity IDs and add-on configuration are unchanged.
+
+Commands are still subject to physical BLE connection and handshake latency.
