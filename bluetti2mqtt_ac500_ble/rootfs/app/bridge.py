@@ -14,6 +14,7 @@ import signal
 from dataclasses import dataclass
 from enum import Enum
 from cryptography.exceptions import InvalidSignature
+from command_mailbox import CommandMailbox
 from typing import Any
 
 import paho.mqtt.client as mqtt
@@ -344,7 +345,7 @@ class Bridge:
         self.opts = opts
         self.device = AC500()
         self.device.max_packs = 0  # preview: disable battery pack selector writes
-        self.queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
+        self.commands = CommandMailbox(max_age=45.0, verified_ttl=30.0)
         self.pending_write = asyncio.Event()
         self.crypto_faults = 0
         self.loop = asyncio.get_running_loop()
@@ -392,10 +393,26 @@ class Bridge:
         self.loop.call_soon_threadsafe(self.enqueue_command, field, value)
 
     def enqueue_command(self, field: str, value: str):
-        # Called on the asyncio loop: flag work before either BLE loop can
-        # begin another session.  Do not drop or coalesce user writes.
-        self.pending_write.set()
-        self.queue.put_nowait((field, value))
+        # BLE may require a full handshake for every write. Keep only the
+        # most recent desired setpoint per hardware register, without changing
+        # the cadence of the Home Assistant surplus automation.
+        if not self.opts.allow_writes:
+            LOG.warning("Write blocked (allow_writes=false): %s", field)
+            return
+        try:
+            address, numeric = self.parse_write(field, value)
+        except (KeyError, ValueError) as exc:
+            LOG.warning("Rejected MQTT command %r=%r: %s", field, value, exc)
+            return
+        outcome = self.commands.put(address, field, value, numeric, time.monotonic())
+        if outcome in ("queued", "replaced"):
+            self.pending_write.set()
+        if outcome == "replaced":
+            LOG.info("Updated pending MQTT setpoint %s=%s (previous value discarded)", field, value)
+        elif outcome == "already_active":
+            LOG.debug("Duplicate MQTT setpoint %s=%s already in progress", field, value)
+        elif outcome == "recently_verified":
+            LOG.debug("MQTT setpoint %s=%s recently read back from hardware", field, value)
 
     async def wait_for_pending_writes(self):
         # Between battery probes, give the command worker first access to BLE.
@@ -688,7 +705,14 @@ class Bridge:
             if field in aliases:
                 self.publish(aliases[field], value)
         if 3019 in raw and len(raw[3019]) >= 2:
-            self.publish("grid_charge_amps", int.from_bytes(raw[3019][:2], "big"))
+            actual_amps = int.from_bytes(raw[3019][:2], "big")
+            self.publish("grid_charge_amps", actual_amps)
+        # Only suppress repeat MQTT commands after actual hardware read-back,
+        # never merely because FC06 acknowledged the write.
+        for writable_address in {entry[0] for entry in WRITE_FIELDS.values()}:
+            actual = legacy_register_value(raw, writable_address)
+            if actual is not None:
+                self.commands.mark_verified(writable_address, actual, time.monotonic())
         if 170 in raw and len(raw[170]) >= 6:
             self.publish("dc_input_voltage2", int.from_bytes(raw[170][:2], "big") / 10)
             self.publish("dc_input_power2", int.from_bytes(raw[170][4:6], "big"))
@@ -750,14 +774,23 @@ class Bridge:
 
     async def worker(self):
         while not self.stop_event.is_set():
-            field, payload = await self.queue.get()
+            await self.pending_write.wait()
+            if self.stop_event.is_set():
+                break
+            command = self.commands.pop(time.monotonic())
+            if command is None:
+                self.pending_write.clear()
+                continue
+            address, field, payload, numeric, received_at = command
             try:
+                LOG.info("MQTT command %s dispatched after %.2fs in queue",
+                         field, time.monotonic() - received_at)
                 await self.handle_write(field, payload)
             except Exception:
                 LOG.exception("Command failed: %s", field)
             finally:
-                self.queue.task_done()
-                if self.queue.empty():
+                self.commands.finish(address, numeric)
+                if not self.commands.has_pending:
                     self.pending_write.clear()
 
     async def polling(self):
